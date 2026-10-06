@@ -363,6 +363,26 @@ function amountInComparableUnits(metric: FundamentalMetric): number {
   }
 }
 
+function amountInCrore(metric: FundamentalMetric): number {
+  if (
+    metric.status === "unavailable" ||
+    metric.provenance.currency !== "INR"
+  ) {
+    throw new FundamentalsValidationError(
+      `Metric ${metric.id} is not an available INR amount.`,
+    );
+  }
+  if (metric.provenance.unit === "INR_CRORE") {
+    return metric.value;
+  }
+  if (metric.provenance.unit === "INR_BILLION") {
+    return metric.value * 100;
+  }
+  throw new FundamentalsValidationError(
+    `Metric ${metric.id} must use INR crore or INR billion.`,
+  );
+}
+
 function growthValues(
   current: FundamentalMetric,
   previous: FundamentalMetric,
@@ -384,6 +404,22 @@ function growthValues(
     };
   }
 
+  if (
+    current.provenance.currency !== "INR" &&
+    current.provenance.currency !== "USD"
+  ) {
+    throw new FundamentalsValidationError(
+      `Metric ${current.id} is not an INR amount or USD amount.`,
+    );
+  }
+  if (
+    previous.provenance.currency !== "INR" &&
+    previous.provenance.currency !== "USD"
+  ) {
+    throw new FundamentalsValidationError(
+      `Metric ${previous.id} is not an INR amount or USD amount.`,
+    );
+  }
   if (current.provenance.currency !== previous.provenance.currency) {
     throw new FundamentalsValidationError(
       "Growth inputs must use the same currency.",

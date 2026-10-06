@@ -30,10 +30,17 @@ function formatMoney(value: number | null, currency = "INR"): string {
   }).format(value);
 }
 
-function formatFinancialAmount(value: number | null): string {
+function formatFinancialAmount(
+  value: number | null,
+  financialUnit = "INR crore",
+): string {
   return value === null || !Number.isFinite(value)
     ? "Unavailable"
-    : `${formatNumber(value)} INR crore`;
+    : `${formatNumber(value)} ${financialUnit}`;
+}
+
+function formatPerShare(value: number | null, currency: string | null): string {
+  return currency ? formatMoney(value, currency) : "Unavailable";
 }
 
 function formatRate(value: number | null): string {
@@ -177,9 +184,11 @@ function ForecastTable({ forecast }: { forecast: ForecastYearBreakdown[] }) {
 function WaccSection({
   wacc,
   assumptions,
+  financialUnit,
 }: {
   wacc: WaccResult;
   assumptions: WaccAssumptionModel;
+  financialUnit: string;
 }) {
   const rows = [
     ["Risk-free rate", assumptions.riskFreeRate, formatRate],
@@ -189,8 +198,8 @@ function WaccSection({
     ["Pre-tax cost of debt", assumptions.preTaxCostOfDebt, formatRate],
     ["After-tax cost of debt", assumptions.afterTaxCostOfDebt, formatRate],
     ["WACC tax rate", assumptions.taxRate, formatRate],
-    ["Debt", assumptions.debt, formatFinancialAmount],
-    ["Equity / market capitalization", assumptions.equity, formatFinancialAmount],
+    ["Debt", assumptions.debt, (value: number | null) => formatFinancialAmount(value, financialUnit)],
+    ["Equity / market capitalization", assumptions.equity, (value: number | null) => formatFinancialAmount(value, financialUnit)],
     ["Equity weight", assumptions.equityWeight, formatRate],
     ["Debt weight", assumptions.debtWeight, formatRate],
     ["WACC", assumptions.wacc, formatRate],
@@ -244,8 +253,10 @@ function WaccSection({
 
 function SensitivitySection({
   sensitivity,
+  currency,
 }: {
   sensitivity: SensitivityMatrix;
+  currency: string | null;
 }) {
   if (sensitivity.status !== "available") {
     return <p className="text-xs text-[#98a5b3]">{sensitivity.reason ?? "Sensitivity unavailable."}</p>;
@@ -276,7 +287,7 @@ function SensitivitySection({
                     title={cell.reason ?? undefined}
                     className={`border-b border-[#1a2129] p-2 ${cell.status === "invalid" ? "text-[#778391]" : "text-[#dfeaf5]"}`}
                   >
-                    {cell.status === "invalid" ? "Invalid" : formatNumber(cell.intrinsicValuePerShare)}
+                    {cell.status === "invalid" ? "Invalid" : formatPerShare(cell.intrinsicValuePerShare, currency)}
                   </td>
                 ))}
               </tr>
@@ -290,8 +301,10 @@ function SensitivitySection({
 
 function ScenarioSection({
   scenarios,
+  currency,
 }: {
   scenarios: ValuationScenarioResult[];
+  currency: string | null;
 }) {
   return (
     <div className="grid gap-2 sm:grid-cols-3">
@@ -300,7 +313,7 @@ function ScenarioSection({
           <div className="text-xs font-semibold uppercase text-[#dfeaf5]">{scenario.name}</div>
           <div className="mt-1 text-[10px] text-[#98a5b3]">{scenario.status.replaceAll("_", " ")}</div>
           <div className="mt-2 text-sm text-[#edf3f8]">
-            {formatMoney(scenario.intrinsicValuePerShare)}
+            {formatPerShare(scenario.intrinsicValuePerShare, currency)}
           </div>
           <div className="mt-2 text-[9px] leading-4 text-[#8190a0]">
             Revenue growth {formatRate(scenario.assumptions.revenueGrowth.value)} · {scenario.assumptions.revenueGrowth.sourceType}
@@ -320,9 +333,11 @@ function ScenarioSection({
 
 function AnalystInputsForm({
   ticker,
+  financialUnit,
   onValuation,
 }: {
   ticker: string;
+  financialUnit: string;
   onValuation: (valuation: CompanyValuation) => void;
 }) {
   const [submitting, setSubmitting] = useState(false);
@@ -417,8 +432,8 @@ function AnalystInputsForm({
             ["beta", "Beta", "-5", "5", "0.01", true],
             ["equityRiskPremium", "Equity risk premium (decimal)", "0", "1", "0.001", true],
             ["costOfDebt", "Pre-tax cost of debt (decimal)", "0", "1", "0.001", true],
-            ["marketCapitalization", "Market capitalization (INR crore)", "0", undefined, "any", false],
-            ["debt", "Debt (INR crore)", "0", undefined, "any", false],
+            ["marketCapitalization", `Market capitalization (${financialUnit})`, "0", undefined, "any", false],
+            ["debt", `Debt (${financialUnit})`, "0", undefined, "any", false],
             ["waccTaxRate", "WACC tax rate (decimal)", "0", "1", "0.001", false],
           ].map(([name, label, min, max, step, required]) => (
             <label key={String(name)} className="space-y-1 text-[9px] text-[#98a5b3]">
@@ -506,6 +521,11 @@ function DcfResults({
     result.status === "available";
   const result = availableDcf(dcf) ? dcf : null;
   const latestFinancials = valuation.historicalFinancials.at(-1);
+  const financialUnit = valuation.financialUnit;
+  const shareLabel =
+    latestFinancials?.provenance?.dilutedShares?.unit === "BILLION_SHARES"
+      ? "billion shares"
+      : "crore shares";
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-[#202a34] bg-[#10171d] p-3 text-[10px]">
@@ -536,23 +556,23 @@ function DcfResults({
       </div>
       <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
         {[
-          ["Current price", currentPrice.value === null ? "Unavailable" : formatMoney(currentPrice.value, currentPrice.currency ?? "INR")],
-          ["Intrinsic value / share", formatMoney(result?.valuePerShare ?? null, currentPrice.currency ?? "INR")],
-          ["Enterprise value", formatFinancialAmount(result?.enterpriseValue ?? null)],
-          ["Equity value", formatFinancialAmount(result?.equityValue ?? null)],
+          ["Current price", formatPerShare(currentPrice.value, currentPrice.currency)],
+          ["Intrinsic value / share", formatPerShare(result?.valuePerShare ?? null, valuation.company.currency)],
+          ["Enterprise value", formatFinancialAmount(result?.enterpriseValue ?? null, financialUnit)],
+          ["Equity value", formatFinancialAmount(result?.equityValue ?? null, financialUnit)],
           ["WACC", formatRate(valuation.assumptions.wacc.value)],
           ["Terminal growth", formatRate(valuation.assumptions.terminalGrowth.value)],
-          ["Terminal value", formatFinancialAmount(result?.terminalValue ?? null)],
+          ["Terminal value", formatFinancialAmount(result?.terminalValue ?? null, financialUnit)],
           ["Terminal value / EV", formatRate(result?.terminalValuePercentOfEnterpriseValue ?? null)],
-          ["PV of forecast FCFF", formatFinancialAmount(result?.presentValueOfForecastFcff ?? null)],
-          ["PV of terminal value", formatFinancialAmount(result?.terminalValuePresentValue ?? null)],
+          ["PV of forecast FCFF", formatFinancialAmount(result?.presentValueOfForecastFcff ?? null, financialUnit)],
+          ["PV of terminal value", formatFinancialAmount(result?.terminalValuePresentValue ?? null, financialUnit)],
           ["Upside / downside", formatRate(result?.upsideDownside ?? null)],
-          ["Cash", formatFinancialAmount(latestFinancials?.cash ?? null)],
-          ["Short-term debt", formatFinancialAmount(latestFinancials?.shortTermDebt ?? null)],
-          ["Long-term debt", formatFinancialAmount(latestFinancials?.longTermDebt ?? null)],
-          ["Total debt", formatFinancialAmount(latestFinancials?.debt ?? null)],
-          ["Net debt / (cash)", formatFinancialAmount(result?.netDebt ?? null)],
-          ["Diluted shares", latestFinancials?.dilutedShares === null || latestFinancials?.dilutedShares === undefined ? "Unavailable" : `${formatNumber(latestFinancials.dilutedShares)} crore shares`],
+          ["Cash", formatFinancialAmount(latestFinancials?.cash ?? null, financialUnit)],
+          ["Short-term debt", formatFinancialAmount(latestFinancials?.shortTermDebt ?? null, financialUnit)],
+          ["Long-term debt", formatFinancialAmount(latestFinancials?.longTermDebt ?? null, financialUnit)],
+          ["Total debt", formatFinancialAmount(latestFinancials?.debt ?? null, financialUnit)],
+          ["Net debt / (cash)", formatFinancialAmount(result?.netDebt ?? null, financialUnit)],
+          ["Diluted shares", latestFinancials?.dilutedShares === null || latestFinancials?.dilutedShares === undefined ? "Unavailable" : `${formatNumber(latestFinancials.dilutedShares)} ${shareLabel}`],
         ].map(([label, value]) => (
           <div key={label} className="rounded-lg border border-[#202a34] bg-[#10171d] p-2">
             <div className="text-[9px] uppercase tracking-wide text-[#8190a0]">{label}</div>
@@ -560,7 +580,11 @@ function DcfResults({
           </div>
         ))}
       </div>
-      <AnalystInputsForm ticker={ticker} onValuation={onValuation} />
+      <AnalystInputsForm
+        ticker={ticker}
+        financialUnit={financialUnit}
+        onValuation={onValuation}
+      />
       {currentPrice.source ? (
         <p className="text-[9px] text-[#8190a0]">
           Current price source: {currentPrice.source} · retrieved {currentPrice.retrievedAt ?? "Unavailable"} · as of {currentPrice.asOf ?? "Unavailable"} · {currentPrice.dataStatus ?? "Unavailable"}
@@ -588,11 +612,22 @@ function DcfResults({
         <WaccSection
           wacc={valuation.wacc}
           assumptions={valuation.waccAssumptions}
+          financialUnit={financialUnit}
         />
       </Detail>
       <Detail title="C–D. Forecast and FCFF">
-        {result ? <ForecastTable forecast={result.forecast} /> : (
-          <p className="text-xs text-[#98a5b3]">Forecast and FCFF require complete verified inputs.</p>
+        {result ? (
+          <>
+            <p className="mb-2 text-[10px] text-[#98a5b3]">
+              Forecast monetary values: {financialUnit}; per-share values use{" "}
+              {valuation.company.currency ?? "unavailable currency"}.
+            </p>
+            <ForecastTable forecast={result.forecast} />
+          </>
+        ) : (
+          <p className="text-xs text-[#98a5b3]">
+            Forecast and FCFF require complete verified inputs.
+          </p>
         )}
       </Detail>
       <Detail title="E. Terminal value">
@@ -607,10 +642,10 @@ function DcfResults({
         {result ? (
           <dl className="grid grid-cols-2 gap-2 text-xs text-[#b4bec9]">
             <dt>Terminal growth assumption</dt><dd>{formatRate(valuation.assumptions.terminalGrowth.value)} · {valuation.assumptions.terminalGrowth.sourceType}</dd>
-            <dt>Final forecast FCFF</dt><dd>{formatFinancialAmount(result.terminalYearFcff)}</dd>
-            <dt>Terminal-year FCFF (n+1)</dt><dd>{valuation.assumptions.terminalGrowth.value === null ? "Unavailable" : formatFinancialAmount(result.terminalYearFcff * (1 + valuation.assumptions.terminalGrowth.value))}</dd>
-            <dt>Terminal value</dt><dd>{formatFinancialAmount(result.terminalValue)}</dd>
-            <dt>Present value of terminal value</dt><dd>{formatFinancialAmount(result.terminalValuePresentValue)}</dd>
+            <dt>Final forecast FCFF</dt><dd>{formatFinancialAmount(result.terminalYearFcff, financialUnit)}</dd>
+            <dt>Terminal-year FCFF (n+1)</dt><dd>{valuation.assumptions.terminalGrowth.value === null ? "Unavailable" : formatFinancialAmount(result.terminalYearFcff * (1 + valuation.assumptions.terminalGrowth.value), financialUnit)}</dd>
+            <dt>Terminal value</dt><dd>{formatFinancialAmount(result.terminalValue, financialUnit)}</dd>
+            <dt>Present value of terminal value</dt><dd>{formatFinancialAmount(result.terminalValuePresentValue, financialUnit)}</dd>
             <dt>PV terminal value / enterprise value</dt><dd>{formatRate(result.terminalValuePercentOfEnterpriseValue)}</dd>
           </dl>
         ) : (
@@ -618,10 +653,16 @@ function DcfResults({
         )}
       </Detail>
       <Detail title="F. WACC / terminal-growth sensitivity">
-        <SensitivitySection sensitivity={valuation.sensitivity} />
+        <SensitivitySection
+          sensitivity={valuation.sensitivity}
+          currency={valuation.company.currency}
+        />
       </Detail>
       <Detail title="G. Bear / Base / Bull scenarios">
-        <ScenarioSection scenarios={valuation.scenarios} />
+        <ScenarioSection
+          scenarios={valuation.scenarios}
+          currency={valuation.company.currency}
+        />
       </Detail>
       <Detail title="H. Historical inputs and data sources">
         <div className="space-y-3">
@@ -649,7 +690,7 @@ function DcfResults({
           {valuation.historicalFinancials.length ? (
             <div className="overflow-x-auto">
               <p className="mb-2 text-[10px] text-[#98a5b3]">
-                Historical monetary values are shown in INR crore; ratios use only
+                Historical monetary values are shown in {financialUnit}; ratios use only
                 reported period-matched inputs.
               </p>
               <table className="w-full min-w-[900px] border-collapse text-left text-[10px]">
@@ -674,7 +715,7 @@ function DcfResults({
                   {valuation.historicalFinancials.map((year) => (
                     <tr key={year.fiscalYear} className="text-[#d6dee7]">
                       <td className="border-b border-[#1a2129] p-2">FY{year.fiscalYear}</td>
-                      <td className="border-b border-[#1a2129] p-2">{formatFinancialAmount(year.revenue)}</td>
+                      <td className="border-b border-[#1a2129] p-2">{formatFinancialAmount(year.revenue, financialUnit)}</td>
                       <td className="border-b border-[#1a2129] p-2">{formatRate(year.revenueGrowth)}</td>
                       <td className="border-b border-[#1a2129] p-2">{formatRate(year.ebitdaMargin)}</td>
                       <td className="border-b border-[#1a2129] p-2">{formatRate(year.ebitMargin)}</td>

@@ -3,10 +3,16 @@ import type { FundamentalsHistory } from "../types/fundamentals.ts";
 import type { FundamentalsProvider } from "./fundamentals-provider.ts";
 
 export class RoutedFundamentalsProvider implements FundamentalsProvider {
+  private readonly hdfcProvider: FundamentalsProvider;
+  private readonly genericProvider: FundamentalsProvider;
+
   constructor(
-    private readonly hdfcProvider: FundamentalsProvider,
-    private readonly genericProvider: FundamentalsProvider,
-  ) {}
+    hdfcProvider: FundamentalsProvider,
+    genericProvider: FundamentalsProvider,
+  ) {
+    this.hdfcProvider = hdfcProvider;
+    this.genericProvider = genericProvider;
+  }
 
   async getFundamentals(ticker: string): Promise<FundamentalsHistory | null> {
     const bankHistory = await this.hdfcProvider.getFundamentals(ticker);

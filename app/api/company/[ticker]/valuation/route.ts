@@ -1,6 +1,7 @@
 import { getRequestMarketDataService } from "@/lib/services/market-data";
 import { fundamentalsService } from "@/lib/services/fundamentals";
 import { MarketDataError } from "@/lib/providers/market-data-error";
+import { SecEdgarProviderError } from "@/lib/providers/sec-edgar-fundamentals-provider";
 import {
   buildCompanyValuation,
   type ValuationRequestInputs,
@@ -273,6 +274,16 @@ export async function GET(
   try {
     return await getValuationResponse(ticker);
   } catch (error) {
+    if (error instanceof SecEdgarProviderError) {
+      return Response.json(
+        {
+          error: error.message,
+          code: error.code,
+          dataStatus: "UNAVAILABLE",
+        },
+        { status: 503, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     if (error instanceof RangeError) {
       return Response.json(
         { error: error.message, code: "invalid_valuation_assumptions" },
@@ -321,6 +332,16 @@ export async function POST(
   try {
     return await getValuationResponse(ticker, inputs);
   } catch (error) {
+    if (error instanceof SecEdgarProviderError) {
+      return Response.json(
+        {
+          error: error.message,
+          code: error.code,
+          dataStatus: "UNAVAILABLE",
+        },
+        { status: 503, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     if (error instanceof RangeError) {
       return Response.json(
         { error: error.message, code: "invalid_valuation_assumptions" },

@@ -6,6 +6,8 @@ import {
   marketDataErrorStatus,
 } from "@/lib/providers/market-data-error";
 import { fundamentalsService } from "@/lib/services/fundamentals";
+import { SecEdgarProviderError } from "@/lib/providers/sec-edgar-fundamentals-provider";
+import type { FundamentalsAnalysis } from "@/lib/types/fundamentals";
 import type { CompanyMarketSnapshot } from "@/lib/types/financial";
 import { getIndiaMarketStatus } from "@/lib/market-data/india-market-status";
 
@@ -36,11 +38,34 @@ export async function GET(
       (snapshot
         ? "Market data is available from the selected provider."
         : "The selected provider does not support this ticker.");
-    const fundamentals = await fundamentalsService.getCompanyAnalysis(
-      ticker,
-      snapshot?.quote ?? null,
-      marketUnavailableReason,
-    );
+    let fundamentals: FundamentalsAnalysis | null;
+    try {
+      fundamentals = await fundamentalsService.getCompanyAnalysis(
+        ticker,
+        snapshot?.quote ?? null,
+        marketUnavailableReason,
+      );
+    } catch (error) {
+      if (!(error instanceof SecEdgarProviderError)) {
+        throw error;
+      }
+      return Response.json(
+        {
+          error: error.message,
+          code: error.code,
+          marketError: marketFailure
+            ? {
+                error: marketFailure.message,
+                code: marketFailure.code,
+                category: marketDataErrorCategory(marketFailure),
+                status: marketDataErrorStatus(marketFailure),
+              }
+            : null,
+          dataStatus: "UNAVAILABLE",
+        },
+        { status: 503, headers: { "Cache-Control": "no-store" } },
+      );
+    }
 
     if (!snapshot && !fundamentals) {
       if (marketFailure) {

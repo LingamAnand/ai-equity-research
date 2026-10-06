@@ -288,11 +288,12 @@ export class SecEdgarFundamentalsProvider implements FundamentalsProvider {
         await new Promise((resolve) => setTimeout(resolve, waitMs));
       }
       this.lastRequestAt = this.now();
+      const userAgent = this.userAgent();
       let response: Response;
       try {
         response = await this.fetcher(url, {
           headers: {
-            "User-Agent": this.userAgent(),
+            "User-Agent": userAgent,
             Accept: "application/json",
           },
           signal: AbortSignal.timeout(20_000),
@@ -417,7 +418,6 @@ export class SecEdgarFundamentalsProvider implements FundamentalsProvider {
     const company: Company = {
       id: `sec-${record.cik_str}`,
       ticker,
-      symbol: ticker,
       name: submissions.name ?? record.title,
       exchange,
       countryCode: "US",
@@ -836,12 +836,12 @@ export class SecEdgarFundamentalsProvider implements FundamentalsProvider {
       );
       reportedShares("sharesOutstanding", ["EntityCommonStockSharesOutstanding"], true);
 
-      const directWorkingCapital = reportedAmount(
+      reportedAmount(
         "workingCapital",
         ["WorkingCapital", "OperatingWorkingCapital"],
         false,
       );
-      const changeInWorkingCapital = reportedAmount(
+      reportedAmount(
         "changeInWorkingCapital",
         [
           "IncreaseDecreaseInWorkingCapital",
@@ -933,7 +933,7 @@ export class SecEdgarFundamentalsProvider implements FundamentalsProvider {
     }
     const selectedCurrency =
       amountUnit("USD") === null ? "UNAVAILABLE" : "USD";
-    const company = this.companyFrom(
+    this.companyFrom(
       tickerRecord,
       submissions,
       selectedCurrency,

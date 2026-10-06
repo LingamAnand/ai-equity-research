@@ -401,9 +401,11 @@ export interface CompanyValuation {
     ticker: string;
     name: string;
     exchange: string;
+    currency: string | null;
     sector: string | null;
     industry: string | null;
   };
+  financialUnit: "INR crore" | "USD billion" | "Unavailable";
   valuationMethod: ValuationMethodClass;
   sectorClassification: SectorClassification;
   methodStatus:
@@ -795,6 +797,7 @@ export function buildCompanyValuation(
     ticker: string;
     name: string;
     exchange: string;
+    currency?: string | null;
     sector: string | null;
     industry: string | null;
   },
@@ -843,13 +846,23 @@ export function buildCompanyValuation(
   const currentPrice = quoteIsUsable ? quote!.price : null;
   const latestRow = rows.at(-1);
   const latestSharesProvenance = latestRow?.provenance?.sharesOutstanding;
+  const financialCurrency =
+    latestRow?.provenance?.revenue?.currency ??
+    analysis?.company.currency ??
+    company.currency ??
+    null;
+  const compatibleSharesUnit =
+    (financialCurrency === "INR" &&
+      latestSharesProvenance?.unit === "CRORE_SHARES") ||
+    (financialCurrency === "USD" &&
+      latestSharesProvenance?.unit === "BILLION_SHARES");
   const marketCapCanBeDerived = Boolean(
     quoteIsUsable &&
-      quote?.currency === "INR" &&
+      quote?.currency === financialCurrency &&
+      compatibleSharesUnit &&
       latestRow?.sharesOutstanding !== null &&
       latestRow?.sharesOutstanding !== undefined &&
-      latestRow.sharesOutstanding > 0 &&
-      latestSharesProvenance?.unit === "CRORE_SHARES",
+      latestRow.sharesOutstanding > 0,
   );
   const derivedMarketCap =
     marketCapCanBeDerived ? currentPrice! * latestRow!.sharesOutstanding! : null;
@@ -1003,9 +1016,16 @@ export function buildCompanyValuation(
       ticker: company.ticker,
       name: company.name,
       exchange: company.exchange,
+      currency: financialCurrency,
       sector: company.sector,
       industry: company.industry,
     },
+    financialUnit:
+      financialCurrency === "INR"
+        ? "INR crore"
+        : financialCurrency === "USD"
+          ? "USD billion"
+          : "Unavailable",
     valuationMethod: method,
     sectorClassification: method,
     methodStatus:

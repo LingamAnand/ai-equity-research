@@ -740,6 +740,44 @@ test("does not normalize monetary values without verified INR currency", () => {
   assert.equal(annual[1]!.revenue, 16830);
 });
 
+test("keeps USD fundamentals in USD billions and derives market capitalization only from matching price currency", () => {
+  const analysis = createNonFinancialAnalysis();
+  analysis.company.currency = "USD";
+  analysis.financials.forEach((metric) => {
+    if (/sharesoutstanding/i.test(metric.id)) {
+      metric.provenance.unit = "BILLION_SHARES";
+      metric.provenance.currency = null;
+    } else {
+      metric.provenance.unit = "USD_BILLION";
+      metric.provenance.currency = "USD";
+    }
+  });
+
+  const company = {
+    ticker: "TEST",
+    name: "Example Operating Company",
+    exchange: "NASDAQ",
+    sector: null,
+    industry: null,
+  };
+  const inrPriceValuation = buildCompanyValuation(
+    company,
+    analysis,
+    createQuote(),
+  );
+  assert.equal(inrPriceValuation.financialUnit, "USD billion");
+  assert.equal(inrPriceValuation.company.currency, "USD");
+  assert.equal(inrPriceValuation.waccAssumptions.equity.value, null);
+
+  const usdQuote = { ...createQuote(), currency: "USD" };
+  const usdPriceValuation = buildCompanyValuation(
+    company,
+    analysis,
+    usdQuote,
+  );
+  assert.equal(usdPriceValuation.waccAssumptions.equity.value, 1500);
+});
+
 test("classifies financial companies and blocks FCFF DCF for HDFC Bank", () => {
   assert.equal(
     classifyValuationMethod({ companyName: "Example Bank PLC" }),

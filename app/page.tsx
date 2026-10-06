@@ -466,7 +466,9 @@ export default function Home() {
       }
 
       if (!result.companies?.length) {
-        setSearchError("No matching company in the supported NSE universe.");
+        setSearchError(
+          "No matching company was found in the configured market-data or SEC fundamentals sources.",
+        );
         return;
       }
 
@@ -544,6 +546,10 @@ export default function Home() {
       return `${x},${y}`;
     })
     .join(" ");
+  const selectedCompanyName =
+    company?.name ?? fundamentals?.company.companyName ?? null;
+  const selectedCompanyExchange =
+    company?.exchange ?? fundamentals?.company.exchange ?? null;
 
   return (
     <main className="min-h-screen bg-[#090b0e] text-[#edf3f8]">
@@ -673,7 +679,7 @@ export default function Home() {
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search supported NSE ticker or company..."
+                  placeholder="Search NSE ticker or SEC-listed company..."
                   className="w-full bg-transparent text-sm text-[#edf3f8] placeholder:text-[#6e7a88] focus:outline-none"
                 />
                 <button
@@ -718,7 +724,7 @@ export default function Home() {
             <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#eef3f7] text-xl font-bold text-[#0d1116]">
-                  {company?.name.charAt(0).toLocaleUpperCase() ?? "—"}
+                  {selectedCompanyName?.charAt(0).toLocaleUpperCase() ?? "—"}
                 </div>
 
                 <div>
@@ -726,13 +732,15 @@ export default function Home() {
                     Selected company
                   </div>
                   <div className="mt-1 text-2xl font-semibold tracking-[-0.04em] text-[#f5f8fb]">
-                    {company?.name ??
+                    {selectedCompanyName ??
                       (companyLoading ? "Loading company…" : "Company unavailable")}
                   </div>
                   <div className="mt-1 text-xs text-[#8d98a8]">
                     {company
                       ? `${company.ticker} • ${company.exchange} • ${company.sector ?? "Sector unavailable"}`
-                      : selectedTicker}
+                      : fundamentals
+                        ? `${fundamentals.company.ticker} • ${selectedCompanyExchange} • market data unavailable`
+                        : selectedTicker}
                   </div>
                   <div
                     className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#efc86b]"

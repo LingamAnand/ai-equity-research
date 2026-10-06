@@ -1,0 +1,16 @@
+warning: in the working copy of 'app/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+ .env.example                                     |   3 [32m+[m
+ app/api/company/[ticker]/route.ts                |  35 [32m++++++[m[31m--[m
+ app/api/company/[ticker]/valuation/route.ts      |  21 [32m+++++[m
+ app/api/company/search/route.ts                  |  87 [32m+++++++++++++++++[m[31m--[m
+ app/page.tsx                                     |  18 [32m++[m[31m--[m
+ components/dcf-panel.tsx                         | 105 [32m++++++++++++++++[m[31m-------[m
+ components/fundamentals-panel.tsx                |  23 [32m++++[m[31m-[m
+ lib/calculations/fundamentals.ts                 |  36 [32m++++++++[m
+ lib/providers/routed-fundamentals-provider.ts    |  12 [32m++[m[31m-[m
+ lib/providers/sec-edgar-fundamentals-provider.ts |  10 [32m+[m[31m--[m
+ lib/services/valuation-service.ts                |  26 [32m+++++[m[31m-[m
+ package.json                                     |   2 [32m+[m[31m-[m
+ tests/valuation.test.ts                          |  38 [32m++++++++[m
+ 13 files changed, 353 insertions(+), 63 deletions(-)

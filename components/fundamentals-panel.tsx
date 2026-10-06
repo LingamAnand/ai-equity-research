@@ -49,6 +49,14 @@ function formatMetric(metric: FundamentalMetric): string {
       return `₹${formatted}`;
     case "CRORE_SHARES":
       return `${formatted} cr shares`;
+    case "USD_MILLION":
+      return `$${formatted} mm`;
+    case "USD_BILLION":
+      return `$${formatted} bn`;
+    case "USD_PER_SHARE":
+      return `$${formatted}`;
+    case "BILLION_SHARES":
+      return `${formatted} bn shares`;
     case "PERCENT":
       return `${formatted}%`;
     case "YEARS":
@@ -81,12 +89,20 @@ function formatFinancialValue(value: FinancialValue): string {
       return `₹${formatted} bn`;
     case "INR_PER_SHARE":
       return `₹${formatted}`;
+    case "USD_MILLION":
+      return `$${formatted} mm`;
+    case "USD_BILLION":
+      return `$${formatted} bn`;
+    case "USD_PER_SHARE":
+      return `$${formatted}`;
     case "PERCENT":
       return `${formatted}%`;
     case "MULTIPLE":
       return `${formatted}x`;
     case "CRORE_SHARES":
       return `${formatted} cr shares`;
+    case "BILLION_SHARES":
+      return `${formatted} bn shares`;
     case "YEARS":
       return `${formatted} years`;
   }
@@ -173,7 +189,7 @@ export function FundamentalsPanel({
         </div>
         <p className="mt-3 text-sm text-[#aab5c1]" role={error ? "status" : undefined}>
           {isLoading
-            ? "Loading official HDFC Bank fundamentals…"
+            ? "Loading verified company fundamentals…"
             : error ?? "Not available from verified source"}
         </p>
       </div>
@@ -197,7 +213,10 @@ export function FundamentalsPanel({
             Data quality · {fundamentals.dataQuality.classification}
           </h3>
           <span className="text-[9px] uppercase tracking-[0.15em] text-[#8d98a8]">
-            {fundamentals.dataQuality.status} · curated disclosure snapshot
+            {fundamentals.dataQuality.status} ·{" "}
+            {fundamentals.dataQuality.sourceMode === "SEC_COMPANYFACTS"
+              ? "SEC EDGAR company facts"
+              : "curated disclosure snapshot"}
           </span>
         </div>
         <div className="mt-2 grid gap-2 text-[10px] text-[#aab5c1] sm:grid-cols-2 xl:grid-cols-4">
